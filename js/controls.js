@@ -47,7 +47,6 @@ controls = {
     },
 
     drawInitState: function(state) {
-        console.log(state);
         document.getElementsByClassName('state-text').innerHTML = state;
     }
 };

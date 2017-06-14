@@ -1,7 +1,7 @@
 C = {
     init: function () {
         M.size = 1000;
-        this.steps = 1000;
+        this.steps = 50;
         controls.init(M.defaultRuleString);
         this.start();
     },
@@ -16,10 +16,10 @@ C = {
         M.state = null;
         for (var i = 0; i < this.steps; i++) {
             var state = M.getNewState();
-            V.drawLine(i, state);
+            // V.drawLine(i, state);
+            V.drawPopulation(state);
         }
         document.body.className = '';
-        console.log(performance.now() - t0);
     },
 
     setDecimalRule: function(decRule) {

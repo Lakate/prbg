@@ -58,3 +58,8 @@ canvas {
 .loading #loadmask {
     display: block;
 }
+
+.population p
+{
+    margin: 0;
+}
