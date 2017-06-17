@@ -22,7 +22,7 @@ def stringpart(binin, num):
     blocks = [binin[xs * num:num + xs * num:] for xs in xrange(len(binin) / num)]
     return blocks
 
-def randgen(num):
+
     '''Spits out a stream of random numbers like '1001001' with the length num'''
 
     rn = open('/dev/urandom', 'r')
@@ -42,7 +42,7 @@ def monobitfrequencytest(binin):
     sn = reduce(su, sc)
     sobs = np.abs(sn) / np.sqrt(len(binin))
     pval = spc.erfc(sobs / np.sqrt(2))
-    return pval
+    return pval > 0.01
 
 def blockfrequencytest(binin, nu=128):
     ''' The focus of the test is the proportion of zeroes and ones within M-bit blocks. The purpose of this test is to determine whether the frequency of ones is an M-bit block is approximately M/2.'''
@@ -51,16 +51,18 @@ def blockfrequencytest(binin, nu=128):
     uu = map(sus, tt)
     chisqr = 4 * nu * reduce(su, uu)
     pval = spc.gammaincc(len(tt) / 2.0, chisqr / 2.0)
-    return pval
+    return pval > 0.01
 
 def runstest(binin):
-    ''' The focus of this test is the total number of zero and one runs in the entire sequence, where a run is an uninterrupted sequence of identical bits. A run of length k means that a run consists of exactly k identical bits and is bounded before and after with a bit of the opposite value. The purpose of the runs test is to determine whether the number of runs of ones and zeros of various lengths is as expected for a random sequence. In particular, this test determines whether the oscillation between such substrings is too fast or too slow.''' 
+    ''' The focus of this test is the total number of zero and one runs in the entire sequence, where a run is an uninterrupted sequence of identical bits. A run of length k means that a run consists of exactly k identical bits and is bounded before and after with a bit of the opposite value. The purpose of the runs test is to determine whether the number of runs of ones and zeros of various lengths is as expected for a random sequence. In particular, this test determines whether the oscillation between such substrings is too fast or too slow.'''
+    binin2 = [str(el) for el in binin]
+    binin = ''.join(binin2)
     ss = [int(el) for el in binin]
     n = len(binin)
     pi = 1.0 * reduce(su, ss) / n
     vobs = len(binin.replace('0', ' ').split()) + len(binin.replace('1' , ' ').split())
     pval = spc.erfc(abs(vobs-2*n*pi*(1-pi)) / (2 * pi * (1 - pi) * np.sqrt(2*n)))
-    return pval
+    return pval > 0.01
 
 def longestrunones8(binin):
     ''' The focus of the test is the longest run of ones within M-bit blocks. The purpose of this test is to determine whether the length of the longest run of ones within the tested sequence is consistent with the length of the longest run of ones that would be expected in a random sequence. Note that an irregularity in the expected length of the longest run of ones implies that there is also an irregularity in the expected length of the longest run of zeroes. Long runs of zeroes were not evaluated separately due to a concern about statistical independence among the tests.'''
@@ -80,47 +82,59 @@ def longestrunones8(binin):
     return pval
 
 def longestrunones128(binin):  # not well tested yet
-    if len(binin) > 128:
-        m = 128
-        k = 5
-        n = len(binin)
-        pik = [ 0.1174, 0.2430, 0.2493, 0.1752, 0.1027, 0.1124 ]
-        blocks = [binin[xs * m:m + xs * m:] for xs in xrange(len(binin) / m)]
-        n = len(blocks)
-        counts = [xs.replace('0', ' ').split() for xs in blocks]
-        counts2 = [map(len, xx) for xx in counts]
-        counts3 = [(1 if xx < 1 else xx) for xx in map(max, counts2)]
-        counts4 = [(4 if xx > 4 else xx) for xx in counts3]
-        chisqr1 = [(counts4[xx] - n * pik[xx]) ** 2 / (n * pik[xx]) for xx in xrange(len(counts4))]
-        chisqr = reduce(su, chisqr1)
-        pval = spc.gammaincc(k / 2.0, chisqr / 2.0)
-    else:
-        print 'longestrunones128 failed, too few bits:', len(binin)
-        pval = 0
-    return pval
+    binin2 = [str(el) for el in binin]
+    binin = ''.join(binin2)
+
+    M = 128
+    K = 5
+    PIK = [ 0.1174, 0.2430, 0.2493, 0.1752, 0.1027, 0.1124 ]
+    R = 49
+
+    blocks = [binin[xs * M:M + xs * M:] for xs in xrange(len(binin) / M)]
+    counts = [xs.replace('0', ' ').split() for xs in blocks]
+    counts = [map(len, xx) for xx in counts]
+    counts = [(1 if xx < 1 else xx) for xx in map(max, counts)]
+    counts.sort()
+
+    counts = [(0 if xx <= 4 else xx) for xx in counts]
+    counts = [(xx - 4 if xx > 4 and xx < 9 else xx) for xx in counts]
+    counts = [(5 if xx >= 9 else xx) for xx in counts]
+    counts6 = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+
+    for x in set(counts):
+        counts6[x] = counts.count(x)
+
+    chisqr1 = [(counts6[xx] - R * PIK[xx]) ** 2 / (R * PIK[xx]) for xx in xrange(5)]
+    chisqr = reduce(su, chisqr1)
+    pval = spc.gammaincc(K / 2.0, chisqr / 2.0)
+
+    return pval > 0.01
 
 def longestrunones10000(binin):  # not well tested yet
-    ''' The focus of the test is the longest run of ones within M-bit blocks. The purpose of this test is to determine whether the length of the longest run of ones within the tested sequence is consistent with the length of the longest run of ones that would be expected in a random sequence. Note that an irregularity in the expected length of the longest run of ones implies that there is also an irregularity in the expected length of the longest run of zeroes. Long runs of zeroes were not evaluated separately due to a concern about statistical independence among the tests.'''
-    if len(binin) > 128:
-        m = 10000
-        k = 6
-        pik = [0.0882, 0.2092, 0.2483, 0.1933, 0.1208, 0.0675, 0.0727]
-        blocks = [binin[xs * m:m + xs * m:] for xs in xrange(len(binin) / m)]
-        n = len(blocks)
-        counts = [xs.replace('0', ' ').split() for xs in blocks]
-        counts2 = [map(len, xx) for xx in counts]
-        counts3 = [(10 if xx < 10 else xx) for xx in map(max, counts2)]
-        counts4 = [(16 if xx > 16 else xx) for xx in counts3]
-        freqs = [counts4.count(spi) for spi in [10,11,12,13,14,15,16]]
-        chisqr1 = [(freqs[xx] - n * pik[xx]) ** 2 / (n * pik[xx]) for xx in xrange(len(freqs))]
-        chisqr = reduce(su, chisqr1)
-        pval = spc.gammaincc(k / 2.0, chisqr / 2.0)
-    else:
-        print 'longestrunones10000 failed, too few bits:', len(binin)
-        pval = 0
-    return pval
+    '''
+        The focus of the test is the longest run of ones within M-bit blocks.
+        The purpose of this test is to determine whether the length of the longest run of ones
+        within the tested sequence is consistent with the length of the longest run of ones that would be expected in a random sequence.
+        Note that an irregularity in the expected length of the longest run of ones implies that there is also an irregularity
+        in the expected length of the longest run of zeroes. Long runs of zeroes were not evaluated separately due to
+        a concern about statistical independence among the tests.
+    '''
+    m = 10000
+    k = 6
+    pik = [0.0882, 0.2092, 0.2483, 0.1933, 0.1208, 0.0675, 0.0727]
+    blocks = [binin[xs * m:m + xs * m:] for xs in xrange(len(binin) / m)]
+    n = len(blocks)
+    counts = [xs.replace('0', ' ').split() for xs in blocks]
+    counts2 = [map(len, xx) for xx in counts]
+    counts3 = [(10 if xx < 10 else xx) for xx in map(max, counts2)]
+    counts4 = [(16 if xx > 16 else xx) for xx in counts3]
+    freqs = [counts4.count(spi) for spi in [10,11,12,13,14,15,16]]
+    chisqr1 = [(freqs[xx] - n * pik[xx]) ** 2 / (n * pik[xx]) for xx in xrange(len(freqs))]
+    chisqr = reduce(su, chisqr1)
+    pval = spc.gammaincc(k / 2.0, chisqr / 2.0)
 
-# test 2.06
+    return pval > 0.01
+
 def spectraltest(binin):
     '''The focus of this test is the peak heights in the discrete Fast Fourier Transform. The purpose of this test is to detect periodic features (i.e., repetitive patterns that are near each other) in the tested sequence that would indicate a deviation from the assumption of randomness. '''
 
@@ -134,10 +148,15 @@ def spectraltest(binin):
     n1 = len(np.where(af<t)[0])
     d = (n1 - n0)/np.sqrt(n*0.95*0.05/4)
     pval = spc.erfc(abs(d)/np.sqrt(2))
-    return pval
+    return pval > 0.01
 
 def nonoverlappingtemplatematchingtest(binin, mat="000000001", num=8):
-    ''' The focus of this test is the number of occurrences of pre-defined target substrings. The purpose of this test is to reject sequences that exhibit too many occurrences of a given non-periodic (aperiodic) pattern. For this test and for the Overlapping Template Matching test, an m-bit window is used to search for a specific m-bit pattern. If the pattern is not found, the window slides one bit position. For this test, when the pattern is found, the window is reset to the bit after the found pattern, and the search resumes.'''
+    ''' The focus of this test is the number of occurrences of pre-defined target substrings.
+        The purpose of this test is to reject sequences that exhibit too many occurrences of a given non-periodic (aperiodic) pattern.
+        For this test and for the Overlapping Template Matching test, an m-bit window is used to search for a specific m-bit pattern.
+        If the pattern is not found, the window slides one bit position. For this test, when the pattern is found,
+        the window is reset to the bit after the found pattern, and the search resumes.
+    '''
     n = len(binin)
     m = len(mat)
     M = n/num
@@ -147,7 +166,7 @@ def nonoverlappingtemplatematchingtest(binin, mat="000000001", num=8):
     var = M*(2**-m -(2*m-1)*2**(-2*m))
     chisqr = reduce(su, [(xs - avg) ** 2 for xs in counts]) / var
     pval = spc.gammaincc(1.0 * len(blocks) / 2, chisqr / 2)
-    return pval
+    return pval > 0.1
 
 def occurances(string, sub):
     count=start=0
@@ -159,7 +178,18 @@ def occurances(string, sub):
             return count
 
 def overlappingtemplatematchingtest(binin,mat="111111111",num=1032,numi=5):
-    ''' The focus of this test is the number of pre-defined target substrings. The purpose of this test is to reject sequences that show deviations from the expected number of runs of ones of a given length. Note that when there is a deviation from the expected number of ones of a given length, there is also a deviation in the runs of zeroes. Runs of zeroes were not evaluated separately due to a concern about statistical independence among the tests. For this test and for the Non-overlapping Template Matching test, an m-bit window is used to search for a specific m-bit pattern. If the pattern is not found, the window slides one bit position. For this test, when the pattern is found, the window again slides one bit, and the search is resumed.'''
+    '''
+        The focus of this test is the number of pre-defined target substrings.
+        The purpose of this test is to reject sequences that show deviations from the expected number of runs of
+        ones of a given length. Note that when there is a deviation from the expected number of ones of a given length,
+        there is also a deviation in the runs of zeroes. Runs of zeroes were not evaluated separately due to a concern
+        about statistical independence among the tests. For this test and for the Non-overlapping Template Matching test,
+        an m-bit window is used to search for a specific m-bit pattern. If the pattern is not found, the window slides
+        one bit position. For this test, when the pattern is found, the window again slides one bit, and the search is resumed.
+    '''
+    binin2 = [str(el) for el in binin]
+    binin = ''.join(binin2)
+
     n = len(binin)
     bign = int(n / num)
     m = len(mat)
@@ -175,11 +205,18 @@ def overlappingtemplatematchingtest(binin,mat="111111111",num=1032,numi=5):
     for i in counts2: v[i] = v[i] + 1
     chisqr = reduce(su, [(v[i]-bign*pi[i])** 2 / (bign*pi[i]) for i in xrange(numi + 1)])
     pval = spc.gammaincc(0.5*numi, 0.5*chisqr)
-    return pval
+    return pval > 0.01
 
 
 def maurersuniversalstatistictest(binin,l=7,q=1280):
-    ''' The focus of this test is the number of bits between matching patterns. The purpose of the test is to detect whether or not the sequence can be significantly compressed without loss of information. An overly compressible sequence is considered to be non-random.'''
+    '''
+        The focus of this test is the number of bits between matching patterns.
+        The purpose of the test is to detect whether or not the sequence can be significantly compressed
+        without loss of information. An overly compressible sequence is considered to be non-random.
+    '''
+    binin2 = [str(el) for el in binin]
+    binin = ''.join(binin2)
+
     ru = [
         [0.7326495, 0.690],
         [1.5374383, 1.338],
@@ -213,27 +250,7 @@ def maurersuniversalstatistictest(binin,l=7,q=1280):
     pval = spc.erfc(abs(fn-ru[l-1][0]) / (np.sqrt(2)*sigma))
     return pval
 
-def lempelzivcompressiontest1(binin):
-    ''' The focus of this test is the number of cumulatively distinct patterns (words) in the sequence. The purpose of the test is to determine how far the tested sequence can be compressed. The sequence is considered to be non-random if it can be significantly compressed. A random sequence will have a characteristic number of distinct patterns.'''
-    i = 1
-    j = 0
-    n = len(binin)
-    mu = 69586.25
-    sigma = 70.448718
-    words = []
-    while (i+j)<=n:
-       tmp=binin[i:i+j:] 
-       if words.count(tmp)>0:
-           j+=1
-       else:
-           words.append(tmp)    
-           i+=j+1
-           j=0
-    wobs = len(words)
-    pval = 0.5*spc.erfc((mu-wobs)/np.sqrt(2.0*sigma)) 
-    return pval
 
-def lempelzivcompressiontest(binin):
     ''' The focus of this test is the number of cumulatively distinct patterns (words) in the sequence. The purpose of the test is to determine how far the tested sequence can be compressed. The sequence is considered to be non-random if it can be significantly compressed. A random sequence will have a characteristic number of distinct patterns.'''
     i = 1
     j = 0
@@ -254,8 +271,27 @@ def lempelzivcompressiontest(binin):
     return pval
 
 
-# test 2.11
-def serialtest(binin, m=16):
+    ''' The focus of this test is the number of cumulatively distinct patterns (words) in the sequence. The purpose of the test is to determine how far the tested sequence can be compressed. The sequence is considered to be non-random if it can be significantly compressed. A random sequence will have a characteristic number of distinct patterns.'''
+    i = 1
+    j = 0
+    n = len(binin)
+    mu = 69586.25
+    sigma = 70.448718
+    words = []
+    while (i+j)<=n:
+       tmp=binin[i:i+j:]
+       if words.count(tmp)>0:
+           j+=1
+       else:
+           words.append(tmp)
+           i+=j+1
+           j=0
+    wobs = len(words)
+    pval = 0.5*spc.erfc((mu-wobs)/np.sqrt(2.0*sigma))
+    return pval
+
+
+
     ''' The focus of this test is the frequency of each and every overlapping m-bit pattern across the entire sequence. The purpose of this test is to determine whether the number of occurrences of the 2m m-bit overlapping patterns is approximately the same as would be expected for a random sequence. The pattern can overlap.'''
     n = len(binin)
     hbin=binin+binin[0:m-1:]
@@ -325,7 +361,7 @@ def pik(k,x):
         out=(1.0/(4*x*x))*(1-1.0/(2*np.abs(x)))**(k-1)
     return out
 
-def randomexcursionstest(binin):
+
     ''' The focus of this test is the number of cycles having exactly K visits in a cumulative sum random walk. The cumulative sum random walk is found if partial sums of the (0,1) sequence are adjusted to (-1, +1). A random excursion of a random walk consists of a sequence of n steps of unit length taken at random that begin at and return to the origin. The purpose of this test is to determine if the number of visits to a state within a random walk exceeds what one would expect for a random sequence.'''
     xvals=[-4, -3, -2, -1, 1, 2, 3, 4]
     ss = [int(el) for el in binin]
@@ -357,7 +393,7 @@ def getfreq(linn, nu):
             val = y
     return val
 
-def randomexcursionsvarianttest(binin):
+
     ''' The focus of this test is the number of times that a particular state occurs in a cumulative sum random walk. The purpose of this test is to detect deviations from the expected number of occurrences of various states in the random walk.'''
     ss = [int(el) for el in binin]
     sc = map(sumi, ss)
@@ -374,7 +410,7 @@ def randomexcursionsvarianttest(binin):
             pval.append(spc.erfc(np.abs(getfreq(li, xs) - j) / np.sqrt(2 * j * (4 * np.abs(xs) - 2))))
     return pval
 
-def aproximateentropytest(binin, m=10):
+
     ''' The focus of this test is the frequency of each and every overlapping m-bit pattern. The purpose of the test is to compare the frequency of overlapping blocks of two consecutive/adjacent lengths (m and m+1) against the expected result for a random sequence.'''
     n = len(binin)
     f1a = [(binin + binin[0:m - 1:])[xs:m + xs:] for xs in xrange(n)]
@@ -417,13 +453,16 @@ def mrank(matrix): # matrix rank as defined in the NIST specification
     return ra
 
 def binarymatrixranktest(binin,m=32,q=32):
-    ''' The focus of the test is the rank of disjoint sub-matrices of the entire sequence. The purpose of this test is to check for linear dependence among fixed length substrings of the original sequence.'''
+    '''
+        The focus of the test is the rank of disjoint sub-matrices of the entire sequence.
+        The purpose of this test is to check for linear dependence among fixed length substrings of the original sequence.
+    '''
     p1 = 1.0
     for x in xrange(1,50): p1*=1-(1.0/(2**x))
     p2 = 2*p1
     p3 = 1-p1-p2;
     n=len(binin)
-    u=[int(el) for el in binin] # the input string as numbers, to generate the dot product 
+    u=[int(el) for el in binin] # the input string as numbers, to generate the dot product
     f1a = [u[xs*m:xs*m+m:] for xs in xrange(n/m)]
     n=len(f1a)
     f2a = [f1a[xs*q:xs*q+q:] for xs in xrange(n/q)]
@@ -434,7 +473,7 @@ def binarymatrixranktest(binin,m=32,q=32):
     fm1=r.count(m-1);
     chisqr=((fm-p1*n)**2)/(p1*n)+((fm1-p2*n)**2)/(p2*n)+((n-fm-fm1-p3*n)**2)/(p3*n);
     pval=np.exp(-0.5*chisqr)
-    return pval
+    return pval > 0.01
 
 def lincomplex(binin):
     lenn=len(binin)
@@ -454,7 +493,7 @@ def lincomplex(binin):
             tmp=c
             p=np.zeros(lenn)
             for i in xrange(0,l): # was 1..l+1
-                 if b[i]==1: 
+                 if b[i]==1:
                      p[i+n-m]=1
             c=(c+p)%2;
             if l<=0.5*n: # was if 2l <= n
@@ -464,7 +503,6 @@ def lincomplex(binin):
         n+=1
     return l
 
-# test 2.10
 def linearcomplexitytest(binin,m=500):
     ''' The focus of this test is the length of a generating feedback register. The purpose of this test is to determine whether or not the sequence is complex enough to be considered random. Random sequences are characterized by a longer feedback register. A short feedback register implies non-randomness.'''
     k = 6
@@ -478,7 +516,7 @@ def linearcomplexitytest(binin,m=500):
     im=([((vg[ii]-bign*pi[ii])**2)/(bign*pi[ii]) for ii in xrange(7)])
     chisqr=reduce(su,im)
     pval=spc.gammaincc(k/2.0,chisqr/2.0)
-    return pval
+    return pval > 0.01
 
 def testall(bits):
     print 'Length:\t\t\t\t\t', len(bits)
@@ -489,16 +527,9 @@ def testall(bits):
     print 'spectraltest\t\t\t\t', spectraltest(bits)
     print 'nonoverlappingtemplatematching\t\t',nonoverlappingtemplatematching(bits, '1001', 10)
     print 'overlapingtemplatematching\t\t',overlapingtemplatematching(bits, '100', 12, 5)
-    print 'serialtest\t\t\t\t', serialtest(bits, 10)
-    print 'cumulativesumstest\t\t\t', cumulativesumstest(bits)
-    print 'aproximateentropytest\t\t\t', aproximateentropytest(bits, 4)
-    print 'randomexcursionsvarianttest\t\t', randomexcursionsvarianttest(bits)
-    print "linearcomplexitytest\t\t\t",linearcomplexitytest(bits,10)
-    print "binarymatrixranktest\t\t\t",binarymatrixranktest(bits,3,4)
-    print "lempelzivcompressiontest\t\t",lempelzivcompressiontest(bits)
-    print "longestrunones10000\t\t",longestrunones10000(bits)
     print "maurersuniversalstatistictest\t\t",maurersuniversalstatistictest(bits,12,5)
-    print "randomexcursionstest\t\t\t",randomexcursionstest(bits)
+    print "binarymatrixranktest\t\t\t",binarymatrixranktest(bits,3,4)
+    print "linearcomplexitytest\t\t\t",linearcomplexitytest(bits,10)
+    print "longestrunones10000\t\t",longestrunones10000(bits)
+
     return
-
-
