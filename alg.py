@@ -2,12 +2,16 @@
 
 from random import choice
 import randtest
+import operator
 
 DEFAULT_RULE = "{0:b}".format(30)
-POPULATION_SIZE = 5000
-START_POPULATION_COUNT = 10
+POPULATION_SIZE = 2500
+START_POPULATION_COUNT = 50
 MUTATION_MAX_COUNT = 10 # 10%
 current_state = None
+
+file = open('population.txt', 'w')
+population = []
 
 TESTS = [
     'monobitfrequencytest',\
@@ -19,12 +23,7 @@ TESTS = [
     'nonoverlappingtemplatematchingtest',\
     'overlappingtemplatematchingtest',\
     # 'maurersuniversalstatistictest',\
-    'linearcomplexitytest',\
-
-    # works
-    # 'randomexcursionstest',\
-    # 'randomexcursionsvarianttest',\
-    # 'lempelzivcompressiontest'\
+    'linearcomplexitytest'
 ]
 
 def setRule():
@@ -54,7 +53,6 @@ def getNewState():
 
 def getRandomInitialState():
     state = []
-    # state = [1, 1, 1, 1, 0, 0, 1, 1, 1, 1]
 
     for i in range(0, POPULATION_SIZE):
         state.append(choice([0, 1]))
@@ -90,12 +88,9 @@ def calculateState():
 def mutate(population):
     mutation_count = len(population) / MUTATION_MAX_COUNT
 
-    print(mutation_count)
-
     for i in range(mutation_count):
         mutateted_gen = choice(range(0, len(population)))
         mutated_index = choice(range(0, POPULATION_SIZE))
-        # mutation_value = #choice(range(0, 1))
 
         file.write('MUTATE: gen ' + str(mutateted_gen) +
          ' index ' + str(mutated_index) + '\n')
@@ -121,7 +116,7 @@ def cross(population):
     return new_population
 
 def printEmptyLine(text):
-    for i in range(0, 5):
+    for i in range(0, 3):
         file.write('\n')
 
     file.write(text + '\n')
@@ -133,15 +128,52 @@ def printCurrentPopulation(population):
 
         file.write('\n')
 
-file = open('population.txt', 'w')
-population = []
-cross_population = []
-mutate_population = []
-state = None
+
+
+
+def alg(population):
+    new_length = 0
+
+    while len(population) >= 10:
+        cross_population = []
+        mutate_population = []
+        state = None
+        rating = {}
+
+        printEmptyLine('CROSS')
+        cross_population = cross(population)
+        printCurrentPopulation(cross_population)
+
+        printEmptyLine('MUTATE')
+        mutate_population = mutate(cross_population)
+        printCurrentPopulation(mutate_population)
+
+        printEmptyLine('SELECT')
+        for index in xrange(len(mutate_population)):
+            rating[index] = 0
+
+            for test in TESTS:
+                if eval("randtest." + test)(mutate_population[index]) == True:
+                    rating[index] += 1;
+            file.write('RATING: ' + str(rating[index]) + '\n')
+            # print('randgen ', randtest.maurersuniversalstatistictest(state))
+
+        sorted_x = dict(sorted(rating.items(), key=operator.itemgetter(1)))
+        sorted_x = sorted_x.keys()
+        new_length = len(sorted_x) - 10
+
+        sorted_x = sorted_x[:new_length]
+
+        population = []
+        for index in sorted_x:
+            population.append(mutate_population[index])
+
+        if sorted_x == []:
+            population = []
 
 # Set initial population
 file.write('INITIAL POPULATION\n')
-for i in range(0, 10):
+for i in range(0, START_POPULATION_COUNT):
     state = getNewState()
     population.append(state)
 
@@ -150,19 +182,5 @@ for i in range(0, 10):
 
     file.write('\n')
 
-printEmptyLine('CROSS')
-cross_population = cross(population)
-printCurrentPopulation(cross_population)
-
-printEmptyLine('MUTATE')
-mutate_population = mutate(cross_population)
-printCurrentPopulation(mutate_population)
-
-printEmptyLine('SELECT')
-for state in mutate_population:
-    # for test in TESTS:
-    #     file.write(test + ' ' + str(eval("randtest." + test)(state)) + '\n')
-    print('randgen ', randtest.maurersuniversalstatistictest(state))
-    file.write('\n')
-
+alg(population)
 file.close()
