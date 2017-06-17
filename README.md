@@ -9,12 +9,12 @@
 ## Файлы
 alg.py - генетический алгоритм
 
-randtest.py - тесты NIST
-testrandom.py - обертка над тестами. Их можно запускать отдельно
-data.pi.bin - 10^6 двоичных цифр Pi в двоичном формате
-data.pi.txt - 10^6 двоичных цифр Pi в txt формате
-data.pi.sht - 25000 двоичных цифр Pi в txt формате
+randtest.py - тесты NIST<br />
+testrandom.py - обертка над тестами. Их можно запускать отдельно<br />
+data.pi.bin - 10^6 двоичных цифр Pi в двоичном формате<br />
+data.pi.txt - 10^6 двоичных цифр Pi в txt формате<br />
+data.pi.sht - 25000 двоичных цифр Pi в txt формате<br />
 
-population.txt - результаты alg.py
+population.txt - результаты alg.py<br />
 
-для работы нужно установить argparse, NumPy и SciPy
+для работы нужно установить argparse, NumPy и SciPy<br />
